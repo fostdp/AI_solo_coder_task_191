@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管道水锤压力波模拟 - 工程化版本</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <h1>💧 管道水锤压力波模拟</h1>
+        <p class="subtitle">基于特征线法的管网瞬变流分析系统 v2.0</p>
+      </div>
+      <div class="header-right">
+        <div class="risk-indicator" id="riskIndicator">
+          <span class="risk-label">风险等级:</span>
+          <span class="risk-badge risk-low" id="riskBadge">计算中...</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="simulation-panel">
+        <div class="canvas-container">
+          <canvas id="simulationCanvas" width="1000" height="500"></canvas>
+        </div>
+        <div class="status-bar">
+          <div class="status-item">
+            <span class="label">当前时间:</span>
+            <span id="currentTime" class="value">0.00 s</span>
+          </div>
+          <div class="status-item">
+            <span class="label">最大压力:</span>
+            <span id="maxPressure" class="value highlight-positive">0.00 MPa</span>
+          </div>
+          <div class="status-item">
+            <span class="label">最小压力:</span>
+            <span id="minPressure" class="value highlight-negative">-0.00 MPa</span>
+          </div>
+          <div class="status-item">
+            <span class="label">阀门开度:</span>
+            <span id="valveOpening" class="value">100%</span>
+          </div>
+          <div class="status-item">
+            <span class="label">理论峰值:</span>
+            <span id="theoreticalMax" class="value">0.00 MPa</span>
+          </div>
+          <div class="status-item">
+            <span class="label">状态:</span>
+            <span id="simulationStatus" class="value status-ready">就绪</span>
+          </div>
+        </div>
+        
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <label class="checkbox-label">
+              <input type="checkbox" id="showEnvelope" checked>
+              <span>显示包络线</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="show3DPipe" checked>
+              <span>3D管道</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showGradient" checked>
+              <span>压力渐变</span>
+            </label>
+          </div>
+          <div class="toolbar-right">
+            <button id="captureWaveBtn" class="btn btn-small btn-secondary">📊 捕获波形对比</button>
+            <button id="clearComparisonBtn" class="btn btn-small btn-danger">🗑️ 清除对比</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="params">📐 参数编辑</button>
+          <button class="tab-btn" data-tab="protection">🛡️ 防护措施</button>
+          <button class="tab-btn" data-tab="comparison">📈 波形对比</button>
+          <button class="tab-btn" data-tab="data">💾 数据管理</button>
+        </div>
+
+        <div class="tab-content active" id="tab-params">
+          <div class="control-section">
+            <h3>模拟控制</h3>
+            <div class="button-group">
+              <button id="startBtn" class="btn btn-primary">▶ 开始模拟</button>
+              <button id="pauseBtn" class="btn btn-secondary">⏸ 暂停</button>
+              <button id="resetBtn" class="btn btn-danger">↺ 重置</button>
+            </div>
+            <div class="speed-control">
+              <label>播放速度:</label>
+              <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1">
+              <span id="speedValue">1.0x</span>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>管道参数编辑器</h3>
+            <div class="param-editor">
+              <div class="input-group">
+                <label>管道长度 (m)</label>
+                <div class="input-with-slider">
+                  <input type="range" id="pipeLengthSlider" min="100" max="5000" step="10" value="1000">
+                  <input type="number" id="pipeLength" value="1000" min="100" max="5000" class="number-input">
+                </div>
+                <div class="param-visual" id="pipeLengthVisual"></div>
+              </div>
+              <div class="input-group">
+                <label>管道直径 (m)</label>
+                <div class="input-with-slider">
+                  <input type="range" id="pipeDiameterSlider" min="0.2" max="2" step="0.05" value="0.5">
+                  <input type="number" id="pipeDiameter" value="0.5" min="0.2" max="2" step="0.05" class="number-input">
+                </div>
+                <div class="param-visual" id="pipeDiameterVisual"></div>
+              </div>
+              <div class="input-group">
+                <label>管道材质</label>
+                <select id="pipeMaterial">
+                  <option value="steel">钢管 (波速 1000 m/s)</option>
+                  <option value="castIron">铸铁管 (波速 1200 m/s)</option>
+                  <option value="pvc">PVC管 (波速 400 m/s)</option>
+                  <option value="hdpe">HDPE管 (波速 350 m/s)</option>
+                  <option value="concrete">混凝土管 (波速 800 m/s)</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>波速 (m/s)</label>
+                <div class="input-with-slider">
+                  <input type="range" id="waveSpeedSlider" min="200" max="1500" step="10" value="1000">
+                  <input type="number" id="waveSpeed" value="1000" min="200" max="1500" class="number-input">
+                </div>
+              </div>
+              <div class="input-group">
+                <label>静压力 (MPa)</label>
+                <div class="input-with-slider">
+                  <input type="range" id="staticPressureSlider" min="0" max="2" step="0.05" value="0">
+                  <input type="number" id="staticPressure" value="0" min="0" max="2" step="0.05" class="number-input">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>运行参数</h3>
+            <div class="input-group">
+              <label>初始流速 (m/s)</label>
+              <div class="input-with-slider">
+                <input type="range" id="initialVelocitySlider" min="0.5" max="5" step="0.1" value="2">
+                <input type="number" id="initialVelocity" value="2" min="0.5" max="5" step="0.1" class="number-input">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>阀门关闭时间 (s)</label>
+              <div class="input-with-slider">
+                <input type="range" id="valveCloseTimeSlider" min="0.1" max="10" step="0.1" value="1">
+                <input type="number" id="valveCloseTime" value="1" min="0.1" max="10" step="0.1" class="number-input">
+              </div>
+            </div>
+            <div class="input-group">
+              <label>阀门关闭曲线</label>
+              <select id="valveCurve">
+                <option value="linear">线性关闭</option>
+                <option value="fastClose">快速关闭</option>
+                <option value="slowClose">缓慢关闭</option>
+                <option value="parabolic">抛物线关闭</option>
+                <option value="twoStage">两阶段关闭</option>
+                <option value="optimized">优化关闭</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-protection">
+          <div class="control-section">
+            <h3>系统风险分析</h3>
+            <button id="analyzeRiskBtn" class="btn btn-primary btn-block">🔍 分析系统风险</button>
+            <div id="riskAnalysisResult" class="analysis-result">
+              <p class="hint">点击上方按钮进行风险分析</p>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>智能推荐防护措施</h3>
+            <div class="constraints">
+              <label>预算限制:</label>
+              <select id="budgetConstraint">
+                <option value="">不限制</option>
+                <option value="low">低预算</option>
+                <option value="medium">中等预算</option>
+                <option value="high">充足预算</option>
+              </select>
+            </div>
+            <button id="getRecommendationsBtn" class="btn btn-success btn-block">💡 获取推荐方案</button>
+            <div id="recommendationsResult" class="recommendations-result">
+              <p class="hint">点击上方按钮获取防护措施推荐</p>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>防护措施对比</h3>
+            <div class="measure-checkboxes" id="measureCheckboxes">
+              <label class="checkbox-label">
+                <input type="checkbox" value="slowClosingValve" checked>
+                <span>缓闭阀门</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" value="surgeTank">
+                <span>调压塔</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" value="airChamber">
+                <span>空气室</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" value="pressureReliefValve">
+                <span>泄压阀</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" value="bypassPipe">
+                <span>旁通管</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" value="vacuumBreaker">
+                <span>真空破坏阀</span>
+              </label>
+            </div>
+            <button id="compareMeasuresBtn" class="btn btn-info btn-block">📊 对比选中措施</button>
+            <div id="comparisonResult" class="comparison-result">
+              <p class="hint">选择措施后点击对比按钮</p>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>生成防护报告</h3>
+            <button id="generateReportBtn" class="btn btn-warning btn-block">📄 生成完整分析报告</button>
+            <div id="reportResult" class="report-result"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-comparison">
+          <div class="control-section">
+            <h3>多工况波形对比</h3>
+            <p class="section-desc">捕获不同参数下的压力波形进行叠加对比</p>
+            <div class="comparison-list" id="comparisonList">
+              <p class="hint">暂无对比波形。点击模拟区工具栏的"捕获波形对比"按钮添加。</p>
+            </div>
+            <div class="comparison-stats">
+              <h4>波形统计对比</h4>
+              <div id="comparisonStats" class="stats-table">
+                <p class="hint">暂无统计数据</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-data">
+          <div class="control-section">
+            <h3>数据管理</h3>
+            <div class="button-group">
+              <button id="saveParamsBtn" class="btn btn-info">💾 保存参数</button>
+              <button id="loadParamsBtn" class="btn btn-info">📂 加载参数</button>
+              <button id="saveSnapshotBtn" class="btn btn-info">📸 保存快照</button>
+            </div>
+            <div id="paramsList" class="params-list">
+              <p class="hint">暂无保存的参数</p>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>包络线数据导出</h3>
+            <button id="exportEnvelopeBtn" class="btn btn-success btn-block">📤 导出包络线数据 (JSON)</button>
+            <button id="exportCSVBtn" class="btn btn-info btn-block">📊 导出包络线数据 (CSV)</button>
+          </div>
+
+          <div class="control-section">
+            <h3>理论说明</h3>
+            <div class="theory-box">
+              <p><strong>水锤压力公式 (Joukowsky):</strong></p>
+              <p class="formula">ΔP = ρ·a·ΔV</p>
+              <p class="formula-desc">ρ=密度 (1000 kg/m³), a=波速 (m/s), ΔV=流速变化 (m/s)</p>
+              <p><strong>特征线法 (MOC):</strong></p>
+              <p class="formula-desc">沿 C+ 和 C- 特征线求解压力波传播</p>
+              <p><strong>压力包络线:</strong></p>
+              <p class="formula-desc">记录各节点历史最大/最小压力，用于水锤防护评估</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>水锤防护工程分析系统 v2.0 | 基于 Node.js + Express + SQLite</p>
+    </footer>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="modal-close" id="modalClose">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/transient-network.js"></script>
+  <script src="js/canvasRenderer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
